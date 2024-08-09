@@ -1,9 +1,10 @@
 package event
 
 import (
+	"net/http"
+
 	"github.com/RobinHoodArmyHQ/robin-api/internal/repositories"
 	"github.com/RobinHoodArmyHQ/robin-api/pkg/nanoid"
-	"net/http"
 
 	"github.com/RobinHoodArmyHQ/robin-api/internal/env"
 	"github.com/RobinHoodArmyHQ/robin-api/internal/repositories/event"
@@ -85,7 +86,7 @@ func GetEventsHandler(c *gin.Context) {
 
 	eventSvc := eventsvc.New()
 	resp, err := eventSvc.GetEventFeed(c, &eventsvc.GetEventFeedRequest{
-		Page:   req.Page,
+		Offset: req.Offset,
 		Limit:  req.Limit,
 		CityId: cityResp.City.ID,
 	})
@@ -95,8 +96,9 @@ func GetEventsHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, &GetEventsResponse{
-		Page:   req.Page,
-		Limit:  req.Limit,
+		Status: models.StatusSuccess(),
+		Offset: req.Offset,
+		Count:  int(resp.Count),
 		Events: resp.Events,
 	})
 }

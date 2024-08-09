@@ -6,9 +6,10 @@ import (
 )
 
 type GetEventsRequest struct {
-	Page   int           `form:"page"`
-	Limit  int           `form:"limit"`
-	CityId nanoid.NanoID `form:"city_id"`
+	Offset       int             `form:"offset"`
+	Limit        int             `form:"limit"`
+	CityId       nanoid.NanoID   `form:"city_id"`
+	UserLocation models.Location `form:"user_location"`
 	// TODO: use lat, long and send nearest events on top
 	//Latitude      float64 `json:"latitude"`
 	//Longitude     float64 `json:"longitude"`
@@ -16,8 +17,8 @@ type GetEventsRequest struct {
 }
 
 type GetEventsResponse struct {
-	Page   int             `json:"page"`
-	Limit  int             `json:"limit"`
-	Status *models.Status  `json:"status,omitempty"`
-	Events []*models.Event `json:"events,omitempty"`
+	Status *models.Status  `json:"status"`
+	Events []*models.Event `json:"events"`
+	Offset int             `json:"offset"`
+	Count  int             `json:"count"`
 }

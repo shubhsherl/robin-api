@@ -35,7 +35,7 @@ var (
 
 type Event struct {
 	ID            int64         `json:"-" gorm:"primaryKey"`
-	EventId       nanoid.NanoID `json:"event_id,omitempty"`
+	EventId       nanoid.NanoID `json:"event_id,omitempty" gorm:"uniqueIndex"`
 	Title         string        `json:"title,omitempty"`
 	Description   string        `json:"description,omitempty"`
 	StartTime     time.Time     `json:"start_time,omitempty"`

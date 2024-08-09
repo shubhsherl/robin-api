@@ -5,11 +5,12 @@ import (
 )
 
 type GetEventFeedRequest struct {
-	Page   int
+	Offset int
 	Limit  int
 	CityId int32
 }
 
 type GetEventFeedResponse struct {
 	Events []*models.Event
+	Count  int64
 }
