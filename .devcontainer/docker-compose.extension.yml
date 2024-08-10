@@ -1,0 +1,12 @@
+services:
+  robin-api:
+    build:
+      target: dev
+    volumes:
+      - .:/app:rw,delegated
+    
+    # to use a ptrace-based debugger like C++, Go, and Rust.
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
