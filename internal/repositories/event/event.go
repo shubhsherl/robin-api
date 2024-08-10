@@ -35,4 +35,5 @@ type GetEventsByLocationRequest struct {
 
 type GetEventsByLocationResponse struct {
 	Events []*models.Event
+	Count  int64
 }
