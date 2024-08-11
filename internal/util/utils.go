@@ -108,3 +108,8 @@ func GetUserInfoStr(userID, randomID string, timeStamp int64) string {
 
 	return b.String()
 }
+
+func GetResetPasswordLink(userHashValue, userID, randomID string, linkExpireTimeStamp int64) string {
+	link := fmt.Sprintf("%s?code=%s&user_id=%s&timestamp=%d&token=%s", viper.GetString("auth.password_reset_link"), userHashValue, userID, linkExpireTimeStamp, randomID)
+	return link
+}

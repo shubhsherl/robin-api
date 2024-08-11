@@ -15,7 +15,6 @@ import (
 	"github.com/RobinHoodArmyHQ/robin-api/pkg/nanoid"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/spf13/viper"
 )
 
 func AuthHandler(c *gin.Context) {
@@ -321,7 +320,7 @@ func ResendOtp(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, ResendOtpResponse{
-			Status: models.StatusFailed("Missing Params"),
+			Status: models.StatusFailed("Missing params"),
 		})
 		return
 	}
@@ -404,7 +403,7 @@ func SendPasswordResetLink(c *gin.Context) {
 	userHashValue := util.GenerateHashCode(userInfoStr)
 
 	// add user_id in password reset link
-	resetPasswordLink := fmt.Sprintf("%s?code=%s&user_id=%s&timestamp=%d&token=%s", viper.GetString("auth.password_reset_link"), userHashValue, user.User.UserID, linkExpireTimeStamp, randomID)
+	resetPasswordLink := util.GetResetPasswordLink(userHashValue, user.User.UserID.String(), randomID.String(), linkExpireTimeStamp)
 
 	// TO-DO send link on the registered/verified email
 	fmt.Println(resetPasswordLink)

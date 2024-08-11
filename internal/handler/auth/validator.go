@@ -11,11 +11,12 @@ import (
 const (
 	passwordMinLength  = 8
 	onlyAlphabetsRegex = `^[a-zA-Z]+$`
-	emailRegex         = `^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]{2,}$`
+	emailRegex         = `[a-zA-Z0-9.*%±]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}`
 )
 
 func validateUserInputs(req *RegisterUserRequest) error {
 	var err error
+
 	// firstName and lastName validation
 	if err = validateUserName(req.FirstName, req.LastName); err != nil {
 		return err
@@ -37,11 +38,12 @@ func validateUserInputs(req *RegisterUserRequest) error {
 func validateUserPassword(password string) error {
 	var hasNumbers, hasLetters, hasSpecialCharacter bool
 
+	// password minlenlength check
 	if len(password) < passwordMinLength {
 		return fmt.Errorf("password should be of at least %d characters", passwordMinLength)
 	}
 
-	// special character match
+	// password should be composed of numbers, alphabets and a special character
 	for _, c := range password {
 		if unicode.IsNumber(c) {
 			hasNumbers = true
@@ -81,7 +83,7 @@ func validateUserEmailID(emailID string) error {
 	}
 
 	if matched := r.MatchString(emailID); !matched {
-		return fmt.Errorf("emailID should contain only alphabets")
+		return fmt.Errorf("invalid emailID")
 	}
 
 	return nil
