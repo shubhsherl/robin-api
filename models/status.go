@@ -2,7 +2,7 @@ package models
 
 // Status denotes the response status
 type Status struct {
-	Success bool   `json:"success,omitempty"`
+	Success bool   `json:"success"`
 	Message string `json:"message,omitempty"`
 }
 
@@ -29,4 +29,8 @@ func StatusSomethingWentWrong() *Status {
 // StatusTimeout is a helper function to create a timed out Status object
 func StatusTimedOut() *Status {
 	return StatusFailed("timed out")
+}
+
+func StatusUnauthorised() *Status {
+	return StatusFailed("Unauthorized")
 }
