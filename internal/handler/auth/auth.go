@@ -56,6 +56,15 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 
+	// validate user inputs
+	err := validateUserInputs(&request)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, RegisterUserResponse{
+			Status: models.StatusFailed(err.Error()),
+		})
+		return
+	}
+
 	registerUser := &userrepo.GetUserByEmailRequest{
 		EmailId: request.EmailId,
 	}
@@ -381,27 +390,24 @@ func SendPasswordResetLink(c *gin.Context) {
 		return
 	}
 
-	// add user_id in password reset link
-	resetLink := fmt.Sprintf("%s?user_id=%s", viper.GetString("auth.password_reset_link"), user.User.UserID.String())
-
-	// TO-DO send link on the registered/verified email
-
-	// add the password reset link and also its expiry time.
-	userVerificationRepo := env.FromContext(c).UserVerificationRepository
-	updateUserVerification := &userverification.UpdateUserRequest{
-		UserID: user.User.UserID,
-		Values: map[string]interface{}{
-			"reset_password_url":            resetLink,
-			"reset_password_url_expires_at": time.Now().Add(2 * time.Minute),
-		},
-	}
-
-	if _, err := userVerificationRepo.UpdateUser(updateUserVerification); err != nil {
+	// generate nanoid
+	randomID, err := nanoid.GetID()
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, SendResetPasswordLinkResponse{
 			Status: models.StatusSomethingWentWrong(),
 		})
 		return
 	}
+
+	linkExpireTimeStamp := time.Now().Add(2 * time.Minute).UTC().Unix()
+	userInfoStr := util.GetUserInfoStr(user.User.UserID.String(), randomID.String(), linkExpireTimeStamp)
+	userHashValue := util.GenerateHashCode(userInfoStr)
+
+	// add user_id in password reset link
+	resetPasswordLink := fmt.Sprintf("%s?code=%s&user_id=%s&timestamp=%d&token=%s", viper.GetString("auth.password_reset_link"), userHashValue, user.User.UserID, linkExpireTimeStamp, randomID)
+
+	// TO-DO send link on the registered/verified email
+	fmt.Println(resetPasswordLink)
 
 	c.JSON(http.StatusOK, SendResetPasswordLinkResponse{
 		Status: models.StatusSuccess(),
@@ -418,12 +424,17 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
+	// password validations
+	err := validateUserPassword(request.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResetPasswordResponse{
+			Status: models.StatusFailed(err.Error()),
+		})
+		return
+	}
+
 	userRepo := env.FromContext(c).UserRepository
-
-	// check if link is expired.
-	userVerificationRepo := env.FromContext(c).UserVerificationRepository
-
-	verificationUser, err := userVerificationRepo.GetVerifiedUserByUserID(&userverification.GetVerifiedUserByUserIDRequest{UserID: nanoid.NanoID(request.UserID)})
+	user, err := userRepo.GetUser(&userrepo.GetUserRequest{UserID: nanoid.NanoID(request.UserID)})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ResetPasswordResponse{
 			Status: models.StatusSomethingWentWrong(),
@@ -431,24 +442,35 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
-	if verificationUser == nil || verificationUser.User == nil {
+	if user == nil || user.User == nil {
 		c.JSON(http.StatusBadRequest, ResetPasswordResponse{
 			Status: models.StatusFailed("No user found with this user_id"),
 		})
 		return
 	}
 
-	if verificationUser.User.ResetPasswordUrl != c.Request.Referer() {
-		c.JSON(http.StatusBadRequest, ResetPasswordResponse{
-			Status: models.StatusFailed("Invalid url"),
+	timestamp, err := strconv.ParseInt(request.Timestamp, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ResetPasswordResponse{
+			Status: models.StatusSomethingWentWrong(),
 		})
 		return
 	}
 
-	currTime := time.Now()
-	if currTime.After(verificationUser.User.ResetPasswordUrlExpirestAt) {
+	// check if link is expired.
+	currTimestamp := time.Now().UTC().Unix()
+	if currTimestamp > timestamp {
+		c.JSON(http.StatusBadRequest, ResendOtpResponse{
+			Status: models.StatusFailed("Reset password link expired"),
+		})
+		return
+	}
+
+	// validate link
+	err = validateResetLink(request.UserID, request.Token, request.Code, timestamp)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, ResetPasswordResponse{
-			Status: models.StatusFailed("Reset link expired"),
+			Status: models.StatusFailed(err.Error()),
 		})
 		return
 	}
