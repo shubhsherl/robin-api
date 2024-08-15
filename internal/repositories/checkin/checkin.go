@@ -12,7 +12,7 @@ type CheckIn interface {
 }
 
 type CreateCheckInRequest struct {
-	CheckIn *models.CheckIn `json:"checkin"`
+	CheckIn *models.CheckIn `json:"checkin" binding:"required"`
 }
 
 type CreateCheckInResponse struct {
