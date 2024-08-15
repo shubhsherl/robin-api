@@ -33,9 +33,9 @@ func CreateCheckInHandler(c *gin.Context) {
 }
 
 func GetCheckInHandler(c *gin.Context) {
-	checkInID := c.Param("check_in_id")
+	checkInID := c.Param("checkin_id")
 	if checkInID == "" {
-		c.JSON(http.StatusBadRequest, &contract.Response{Message: "check_in_id is required"})
+		c.JSON(http.StatusBadRequest, &contract.Response{Message: "checkin_id is required"})
 		return
 	}
 
