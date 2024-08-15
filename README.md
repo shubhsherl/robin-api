@@ -1,14 +1,29 @@
 # Robin App API Backend
 
+Join RHA Tech on Discord
+
+[![Join RHA Tech on Discord](https://dcbadge.limes.pink/api/server/nvST6yxSEy)](https://discord.gg/nvST6yxSEy)
+
+
 
 ## Development
 
 ### Requirements
 - Docker 
 
-### Running Locally
+### With VSCode and Dev Containers (Recommended)
 
-Follow these steps to build and run the application on your local device:
+- clone the repo to your local machine
+- open the folder in VSCode, VSCode will detect devcontainers configuration and ask to reopen in container, proceed with this option
+- this will build the containers, mount the code in robin-api container and open in VSCode
+- on saving any files, code will automatically rebuild (make dev is not required)
+- press F5 to debug using delve
+
+**NOTE:** you must run any make commands (for e.g. creating or applying migrations) on the host machine and not in the dev container
+
+### Without Dev Containers
+
+Follow these steps to build and run the application on your local device without using dev containers:
 
 - clone the repo to your local machine
 - run `make dev` to build the code and setup the database container

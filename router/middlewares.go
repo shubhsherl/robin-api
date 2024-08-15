@@ -1,21 +1,35 @@
 package router
 
 import (
-	"github.com/RobinHoodArmyHQ/robin-api/pkg/ctxmeta"
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/RobinHoodArmyHQ/robin-api/internal/util"
+	"github.com/RobinHoodArmyHQ/robin-api/pkg/ctxmeta"
 	"github.com/gin-gonic/gin"
 )
 
-func isUserLoggedIn(c *gin.Context) {
-	token := c.GetHeader("Authorization")
+func extractBearerToken(header string) (string, error) {
+	if header == "" {
+		return "", errors.New("missing authorization header")
+	}
 
-	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "request does not contain an access token",
+	jwtToken := strings.Split(header, " ")
+	if len(jwtToken) != 2 {
+		return "", errors.New("incorrectly formatted authorization header")
+	}
+
+	return jwtToken[1], nil
+}
+
+func isUserLoggedIn(c *gin.Context) {
+	token, err := extractBearerToken(c.GetHeader("Authorization"))
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": err.Error(),
 		})
-		c.Abort()
 		return
 	}
 
@@ -29,10 +43,8 @@ func isUserLoggedIn(c *gin.Context) {
 		return
 	}
 
-	userId := claims.UserInfo["user_id"].(string)
-	role := claims.UserInfo["user_role"].(string)
-	ctxmeta.SetUser(c, userId)
-	ctxmeta.SetRole(c, role)
+	ctxmeta.SetUser(c, claims.UserId)
+	ctxmeta.SetRole(c, claims.UserRoles)
 	c.Next()
 }
 

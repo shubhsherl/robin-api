@@ -51,7 +51,7 @@ func RegisterUser(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, RegisterUserResponse{
-			Status: models.StatusFailed(fmt.Sprintln("Invalid inputs")),
+			Status: models.StatusFailed(err.Error()),
 		})
 		return
 	}
@@ -88,13 +88,7 @@ func RegisterUser(c *gin.Context) {
 	}
 
 	// generate 6 digit OTP
-	otp, err := util.GenerateOtp(6)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, RegisterUserResponse{
-			Status: models.StatusSomethingWentWrong(),
-		})
-		return
-	}
+	otp := util.GenerateOtp(6)
 
 	// convert otp string to uint64
 	uiOtp, err := strconv.ParseUint(otp, 10, 64)
@@ -201,7 +195,7 @@ func VerifyOtp(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, VerifyOtpResponse{
-			Status: models.StatusFailed(fmt.Sprintln("")),
+			Status: models.StatusFailed(err.Error()),
 		})
 		return
 	}
@@ -246,7 +240,7 @@ func VerifyOtp(c *gin.Context) {
 	currTime := time.Now()
 	if currTime.After(user.User.OtpExpiresAt) {
 		c.JSON(http.StatusOK, VerifyOtpResponse{
-			Status: models.StatusFailed("Otp Expired"),
+			Status: models.StatusFailed("Verification code expired, re-send code to continue"),
 		})
 		return
 	}

@@ -3,6 +3,7 @@ package event
 import (
 	"errors"
 	"fmt"
+
 	eventModel "github.com/RobinHoodArmyHQ/robin-api/internal/repositories/event"
 	"github.com/RobinHoodArmyHQ/robin-api/models"
 	"github.com/RobinHoodArmyHQ/robin-api/pkg/database"
@@ -64,6 +65,8 @@ func (r *EventRepository) GetEvent(req *eventModel.GetEventRequest) (*eventModel
 
 func (r *EventRepository) GetEventsByLocation(req *eventModel.GetEventsByLocationRequest) (*eventModel.GetEventsByLocationResponse, error) {
 	var events []*models.Event
+	var count int64
+
 	//now := time.Now().Format(timeFormat)
 	exec := r.db.Master().
 		Preload(PreloadEventLocation).
@@ -82,12 +85,15 @@ func (r *EventRepository) GetEventsByLocation(req *eventModel.GetEventsByLocatio
 		`).
 		Offset(req.Offset).
 		Limit(req.Limit).
-		Find(&events)
+		Find(&events).
+		Count(&count)
+
 	if exec.Error != nil {
 		return nil, fmt.Errorf("failed to get events: %v", exec.Error)
 	}
 
 	return &eventModel.GetEventsByLocationResponse{
 		Events: events,
+		Count:  count,
 	}, nil
 }

@@ -33,14 +33,19 @@ func SetUser(c *gin.Context, userId string) {
 	set(c, UserKey, userId)
 }
 
-func SetRole(c *gin.Context, role string) {
-	set(c, RoleKey, role)
+func SetRole(c *gin.Context, roles []string) {
+	set(c, RoleKey, roles)
 }
 
 func GetUser(ctx context.Context) nanoid.NanoID {
 	return nanoid.NanoID(getStringValue(ctx, UserKey))
 }
 
-func GetRole(ctx context.Context) string {
-	return getStringValue(ctx, RoleKey)
+func GetRole(ctx context.Context) []string {
+	value := ctx.Value(RoleKey)
+	if value == nil {
+		return nil
+	}
+
+	return value.([]string)
 }

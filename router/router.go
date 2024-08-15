@@ -40,15 +40,14 @@ func Initialize(ctx context.Context, ev *env.Env) *gin.Engine {
 
 	r.GET("/cities", location.GetCitiesHandler)
 
-	authRoutes := r.Group("/auth")
 	{
-		authRoutes.POST("", auth.AuthHandler)
-		authRoutes.POST("/register", auth.RegisterUser)
-		authRoutes.POST("/login", auth.LoginUser)
-		authRoutes.POST("/verifyOtp", auth.VerifyOtp)
-		authRoutes.POST("/resendOtp", auth.ResendOtp)
-		authRoutes.POST("/sendPasswordResetLink", auth.SendPasswordResetLink)
-		authRoutes.POST("/resetPassword", auth.ResetPassword)
+		r.POST("/auth", auth.AuthHandler)
+		r.POST("/auth/signup", auth.RegisterUser)
+		r.POST("/auth/verify", auth.VerifyOtp)
+		r.POST("/auth/verify/resend", auth.ResendOtp)
+		r.POST("/auth/login", auth.LoginUser)
+		r.POST("/auth/sendPasswordResetLink", auth.SendPasswordResetLink)
+		r.POST("/auth/resetPassword", auth.ResetPassword)
 	}
 
 	r.Use(isUserLoggedIn)
@@ -64,6 +63,7 @@ func Initialize(ctx context.Context, ev *env.Env) *gin.Engine {
 		eventGroup.POST("/", isAdminUser, event.CreateEventHandler)
 		eventGroup.POST("/interested", event.InterestedEventHandler)
 		eventGroup.GET("/:event_id/participants", event.GetParticipantsHandler)
+		eventGroup.POST("/:event_id/checkin", checkin.CreateCheckInHandler)
 	}
 
 	userGroup := r.Group("/user")
