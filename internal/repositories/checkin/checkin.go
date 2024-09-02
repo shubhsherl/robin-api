@@ -12,19 +12,19 @@ type CheckIn interface {
 }
 
 type CreateCheckInRequest struct {
-	CheckIn *models.CheckIn `json:"check_in"`
+	CheckIn *models.CheckIn `json:"checkin" binding:"required"`
 }
 
 type CreateCheckInResponse struct {
-	CheckInID nanoid.NanoID `json:"check_in_id"`
+	CheckInID nanoid.NanoID `json:"checkin_id"`
 }
 
 type GetCheckInRequest struct {
-	CheckInID nanoid.NanoID `json:"check_in_id"`
+	CheckInID nanoid.NanoID `json:"checkin_id"`
 }
 
 type GetCheckInResponse struct {
-	CheckIn *models.CheckIn `json:"check_in"`
+	CheckIn *models.CheckIn `json:"checkin"`
 }
 
 type GetUserCheckInsRequest struct {
@@ -32,5 +32,5 @@ type GetUserCheckInsRequest struct {
 }
 
 type GetUserCheckInsResponse struct {
-	CheckIns []*models.CheckIn `json:"check_ins"`
+	CheckIns []*models.CheckIn `json:"checkins"`
 }

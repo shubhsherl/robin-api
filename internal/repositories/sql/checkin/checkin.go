@@ -26,7 +26,7 @@ func New(logger *zap.Logger, db *database.SqlDB) checkin.CheckIn {
 func (i *impl) CreateCheckIn(req *checkin.CreateCheckInRequest) (*checkin.CreateCheckInResponse, error) {
 	var err error
 	req.CheckIn.ID = 0
-	req.CheckIn.CheckInID, err = nanoid.GetID()
+	req.CheckIn.CheckinID, err = nanoid.GetID()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate checkin id: %v", err)
 	}
@@ -36,14 +36,14 @@ func (i *impl) CreateCheckIn(req *checkin.CreateCheckInRequest) (*checkin.Create
 		return nil, fmt.Errorf("failed to create checkin: %v", err)
 	}
 
-	return &checkin.CreateCheckInResponse{CheckInID: req.CheckIn.CheckInID}, nil
+	return &checkin.CreateCheckInResponse{CheckInID: req.CheckIn.CheckinID}, nil
 }
 
 func (i *impl) GetCheckIn(req *checkin.GetCheckInRequest) (*checkin.GetCheckInResponse, error) {
 	model := &models.CheckIn{}
-	exec := i.db.Master().First(model, "check_in_id = ?", req.CheckInID)
+	exec := i.db.Master().First(model, "checkin_id = ?", req.CheckInID)
 	if errors.Is(exec.Error, gorm.ErrRecordNotFound) {
-		i.logger.Error("checkin not found", zap.String("check_in_id", req.CheckInID.String()))
+		i.logger.Error("checkin not found", zap.String("checkin_id", req.CheckInID.String()))
 		return nil, nil
 	}
 

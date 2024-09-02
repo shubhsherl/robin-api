@@ -59,3 +59,7 @@ type GetEventResponse struct {
 	Status *Status `json:"status,omitempty"`
 	Event  *Event  `json:"event,omitempty"`
 }
+
+func (e *Event) Started() bool {
+	return e.StartTime.Before(time.Now())
+}

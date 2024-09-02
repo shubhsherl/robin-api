@@ -1,0 +1,1 @@
+ALTER TABLE checkins RENAME COLUMN photo_ids TO photo_urls;
