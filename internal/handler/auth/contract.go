@@ -54,7 +54,10 @@ type SendResetPasswordLinkResponse struct {
 }
 
 type ResetPasswordRequest struct {
+	Code        string `json:"code" binding:"required"`
+	Token       string `json:"token" binding:"required"`
 	UserID      string `json:"user_id" binding:"required"`
+	Timestamp   string `json:"timestamp" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required"`
 }
 

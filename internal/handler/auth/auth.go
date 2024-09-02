@@ -2,7 +2,6 @@ package auth
 
 import (
 	"fmt"
-	"log"
 
 	"net/http"
 	"strconv"
@@ -10,12 +9,12 @@ import (
 
 	"github.com/RobinHoodArmyHQ/robin-api/internal/env"
 	userrepo "github.com/RobinHoodArmyHQ/robin-api/internal/repositories/user"
+	userverification "github.com/RobinHoodArmyHQ/robin-api/internal/repositories/userVerification"
 	"github.com/RobinHoodArmyHQ/robin-api/internal/util"
 	"github.com/RobinHoodArmyHQ/robin-api/models"
 	"github.com/RobinHoodArmyHQ/robin-api/pkg/nanoid"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/spf13/viper"
 )
 
 func AuthHandler(c *gin.Context) {
@@ -50,6 +49,15 @@ func RegisterUser(c *gin.Context) {
 	var request RegisterUserRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, RegisterUserResponse{
+			Status: models.StatusFailed(err.Error()),
+		})
+		return
+	}
+
+	// validate user inputs
+	err := validateUserInputs(&request)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, RegisterUserResponse{
 			Status: models.StatusFailed(err.Error()),
 		})
@@ -100,10 +108,10 @@ func RegisterUser(c *gin.Context) {
 	}
 
 	// create a new user in user_verificatons table
-	extraDetails := map[string]interface{}{
-		"first_name":    request.FirstName,
-		"last_name":     request.LastName,
-		"password_hash": hashedPassword,
+	userInfo := models.UserInfo{
+		FirstName:    request.FirstName,
+		LastName:     request.LastName,
+		PasswordHash: hashedPassword,
 	}
 
 	newUserData := &models.UserVerification{
@@ -111,10 +119,12 @@ func RegisterUser(c *gin.Context) {
 		Otp:            uiOtp,
 		OtpGeneratedAt: time.Now(),
 		OtpExpiresAt:   time.Now().Add(10 * time.Minute),
-		ExtraDetails:   extraDetails,
+		UserInfo:       userInfo,
 	}
 
-	newUser, err := userRepo.CreateUnverifiedUser(&userrepo.CreateUnverifiedUserRequest{
+	userVerificationRepo := env.FromContext(c).UserVerificationRepository
+
+	newUser, err := userVerificationRepo.CreateUser(&userverification.CreateUserRequest{
 		User: newUserData,
 	})
 
@@ -201,9 +211,10 @@ func VerifyOtp(c *gin.Context) {
 	}
 
 	userRepo := env.FromContext(c).UserRepository
+	userVerificationRepo := env.FromContext(c).UserVerificationRepository
 
 	// get user by user_id
-	user, err := userRepo.GetUnverifiedUserByUserID(&userrepo.GetUnverifiedUserByUserIdRequest{UserID: nanoid.NanoID(request.UserID)})
+	user, err := userVerificationRepo.GetUserByUserID(&userverification.GetUserByUserIdRequest{UserID: nanoid.NanoID(request.UserID)})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, VerifyOtpResponse{
@@ -254,10 +265,10 @@ func VerifyOtp(c *gin.Context) {
 	}
 
 	newUser := &models.User{
-		FirstName:    user.User.ExtraDetails["first_name"].(string),
-		LastName:     user.User.ExtraDetails["last_name"].(string),
+		FirstName:    user.User.UserInfo.FirstName,
+		LastName:     user.User.UserInfo.LastName,
 		EmailId:      user.User.EmailId,
-		PasswordHash: user.User.ExtraDetails["password_hash"].(string),
+		PasswordHash: user.User.UserInfo.PasswordHash,
 		UserID:       user.User.UserID,
 	}
 
@@ -274,14 +285,14 @@ func VerifyOtp(c *gin.Context) {
 	}
 
 	// set user verified in user_verifications table
-	updateUnverifiedUser := &userrepo.UpdateUnverifiedUserRequest{
+	updateUser := &userverification.UpdateUserRequest{
 		UserID: user.User.UserID,
 		Values: map[string]interface{}{
 			"is_verified": 1,
 		},
 	}
 
-	if _, err := userRepo.UpdateUnverifiedUser(updateUnverifiedUser); err != nil {
+	if _, err := userVerificationRepo.UpdateUser(updateUser); err != nil {
 		c.JSON(http.StatusInternalServerError, VerifyOtpResponse{
 			Status: models.StatusSomethingWentWrong(),
 		})
@@ -309,14 +320,14 @@ func ResendOtp(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, ResendOtpResponse{
-			Status: models.StatusFailed("Missing Params"),
+			Status: models.StatusFailed("Missing params"),
 		})
 		return
 	}
 
-	userRepo := env.FromContext(c).UserRepository
+	userVerificationRepo := env.FromContext(c).UserVerificationRepository
 
-	user, err := userRepo.GetUnverifiedUserByUserID(&userrepo.GetUnverifiedUserByUserIdRequest{
+	user, err := userVerificationRepo.GetUserByUserID(&userverification.GetUserByUserIdRequest{
 		UserID: nanoid.NanoID(request.UserID),
 	})
 
@@ -328,7 +339,7 @@ func ResendOtp(c *gin.Context) {
 	}
 
 	// update otp_retry_count
-	updateUnverifiedUser := &userrepo.UpdateUnverifiedUserRequest{
+	updateUser := &userverification.UpdateUserRequest{
 		UserID: nanoid.NanoID(request.UserID),
 		Values: map[string]interface{}{
 			"otp_expires_at":  time.Now().Add(10 * time.Minute),
@@ -336,7 +347,7 @@ func ResendOtp(c *gin.Context) {
 		},
 	}
 
-	if _, err := userRepo.UpdateUnverifiedUser(updateUnverifiedUser); err != nil {
+	if _, err := userVerificationRepo.UpdateUser(updateUser); err != nil {
 		c.JSON(http.StatusInternalServerError, ResendOtpResponse{
 			Status: models.StatusSomethingWentWrong(),
 		})
@@ -378,12 +389,24 @@ func SendPasswordResetLink(c *gin.Context) {
 		return
 	}
 
-	// add user_id in password reset link
-	resetLink := fmt.Sprintf("%s?user_id=%s", viper.GetString("auth.password_reset_link"), user.User.UserID.String())
+	// generate nanoid
+	randomID, err := nanoid.GetID()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, SendResetPasswordLinkResponse{
+			Status: models.StatusSomethingWentWrong(),
+		})
+		return
+	}
 
-	log.Print("Reset_Password_link:", resetLink)
+	linkExpireTimeStamp := time.Now().Add(2 * time.Minute).UTC().Unix()
+	userInfoStr := util.GetUserInfoStr(user.User.UserID.String(), randomID.String(), linkExpireTimeStamp)
+	userHashValue := util.GenerateHashCode(userInfoStr)
+
+	// add user_id in password reset link
+	resetPasswordLink := util.GetResetPasswordLink(userHashValue, user.User.UserID.String(), randomID.String(), linkExpireTimeStamp)
 
 	// TO-DO send link on the registered/verified email
+	fmt.Println(resetPasswordLink)
 
 	c.JSON(http.StatusOK, SendResetPasswordLinkResponse{
 		Status: models.StatusSuccess(),
@@ -400,9 +423,17 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
+	// password validations
+	err := validateUserPassword(request.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResetPasswordResponse{
+			Status: models.StatusFailed(err.Error()),
+		})
+		return
+	}
+
 	userRepo := env.FromContext(c).UserRepository
 	user, err := userRepo.GetUser(&userrepo.GetUserRequest{UserID: nanoid.NanoID(request.UserID)})
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ResetPasswordResponse{
 			Status: models.StatusSomethingWentWrong(),
@@ -410,9 +441,35 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
-	if user == nil {
+	if user == nil || user.User == nil {
 		c.JSON(http.StatusBadRequest, ResetPasswordResponse{
 			Status: models.StatusFailed("No user found with this user_id"),
+		})
+		return
+	}
+
+	timestamp, err := strconv.ParseInt(request.Timestamp, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ResetPasswordResponse{
+			Status: models.StatusSomethingWentWrong(),
+		})
+		return
+	}
+
+	// check if link is expired.
+	currTimestamp := time.Now().UTC().Unix()
+	if currTimestamp > timestamp {
+		c.JSON(http.StatusBadRequest, ResendOtpResponse{
+			Status: models.StatusFailed("Reset password link expired"),
+		})
+		return
+	}
+
+	// validate link
+	err = validateResetLink(request.UserID, request.Token, request.Code, timestamp)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ResetPasswordResponse{
+			Status: models.StatusFailed(err.Error()),
 		})
 		return
 	}
