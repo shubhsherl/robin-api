@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/RobinHoodArmyHQ/robin-api/internal/aws"
 	"github.com/RobinHoodArmyHQ/robin-api/internal/env"
 	userrepo "github.com/RobinHoodArmyHQ/robin-api/internal/repositories/user"
 	userverification "github.com/RobinHoodArmyHQ/robin-api/internal/repositories/userVerification"
@@ -15,6 +16,7 @@ import (
 	"github.com/RobinHoodArmyHQ/robin-api/pkg/nanoid"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/spf13/viper"
 )
 
 func AuthHandler(c *gin.Context) {
@@ -135,7 +137,19 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 
-	// TO-DO: send verification otp via aws-ses
+	// send verification otp via aws-ses
+	receivers := []string{newUserData.EmailId}
+	emailBody := getVerificationEmailBody(uiOtp)
+	fromEmailID := viper.GetString("aws.sender_email_id")
+
+	err = aws.SendEmailSES(emailBody, verificationEmailSubject, fromEmailID, models.Recipient{ToEmails: receivers})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, RegisterUserResponse{
+			Status: models.StatusSomethingWentWrong(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusCreated, RegisterUserResponse{
 		UserID: newUser.UserID.String(),
@@ -354,7 +368,19 @@ func ResendOtp(c *gin.Context) {
 		return
 	}
 
-	// TO-DO resend verification code
+	// resend verification code
+	receivers := []string{user.User.EmailId}
+	emailBody := getVerificationEmailBody(user.User.Otp)
+	fromEmailID := viper.GetString("aws.sender_email_id")
+
+	err = aws.SendEmailSES(emailBody, verificationEmailSubject, fromEmailID, models.Recipient{ToEmails: receivers})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ResendOtpResponse{
+			Status: models.StatusSomethingWentWrong(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, ResendOtpResponse{
 		Status: models.StatusSuccess(),
@@ -405,8 +431,18 @@ func SendPasswordResetLink(c *gin.Context) {
 	// add user_id in password reset link
 	resetPasswordLink := util.GetResetPasswordLink(userHashValue, user.User.UserID.String(), randomID.String(), linkExpireTimeStamp)
 
-	// TO-DO send link on the registered/verified email
-	fmt.Println(resetPasswordLink)
+	// send link on the registered/verified email
+	receivers := []string{user.User.EmailId}
+	emailBody := getResetPasswordEmailBody(resetPasswordLink)
+	fromEmailID := viper.GetString("aws.sender_email_id")
+
+	err = aws.SendEmailSES(emailBody, resetPasswordEmailSubject, fromEmailID, models.Recipient{ToEmails: receivers})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, SendResetPasswordLinkResponse{
+			Status: models.StatusSomethingWentWrong(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, SendResetPasswordLinkResponse{
 		Status: models.StatusSuccess(),

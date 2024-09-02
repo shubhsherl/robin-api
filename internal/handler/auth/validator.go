@@ -8,12 +8,6 @@ import (
 	"github.com/RobinHoodArmyHQ/robin-api/internal/util"
 )
 
-const (
-	passwordMinLength  = 8
-	onlyAlphabetsRegex = `^[a-zA-Z]+$`
-	emailRegex         = `[a-zA-Z0-9.*%±]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}`
-)
-
 func validateUserInputs(req *RegisterUserRequest) error {
 	var err error
 
