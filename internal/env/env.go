@@ -8,6 +8,7 @@ import (
 	"github.com/RobinHoodArmyHQ/robin-api/internal/repositories/event"
 	"github.com/RobinHoodArmyHQ/robin-api/internal/repositories/participants"
 	"github.com/RobinHoodArmyHQ/robin-api/internal/repositories/user"
+	userverification "github.com/RobinHoodArmyHQ/robin-api/internal/repositories/userVerification"
 	"github.com/RobinHoodArmyHQ/robin-api/pkg/database"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gin-gonic/gin"
@@ -20,11 +21,12 @@ const (
 type Env struct {
 	SqlDBConn *database.SqlDB
 
-	EventRepository        event.EventRepository
-	UserRepository         user.User
-	CheckInRepository      checkin.CheckIn
-	LocationRepository     repositories.LocationRepository
-	ParticipantsRepository participants.ParticipantsRepository
+	EventRepository            event.EventRepository
+	UserRepository             user.User
+	CheckInRepository          checkin.CheckIn
+	LocationRepository         repositories.LocationRepository
+	ParticipantsRepository     participants.ParticipantsRepository
+	UserVerificationRepository userverification.UserVerification
 
 	photoRepository repositories.PhotoRepository
 	s3Service       *s3.S3
@@ -110,4 +112,10 @@ func WithS3Service(svc *s3.S3) func(*Env) {
 
 func (env *Env) S3Service() *s3.S3 {
 	return env.s3Service
+}
+
+func WithUserVerificationRepository(userVerificationRepo userverification.UserVerification) func(*Env) {
+	return func(env *Env) {
+		env.UserVerificationRepository = userVerificationRepo
+	}
 }

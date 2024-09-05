@@ -1,8 +1,12 @@
 package util
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/RobinHoodArmyHQ/robin-api/pkg/nanoid"
@@ -84,4 +88,28 @@ func GenerateOtp(length int) string {
 	otp := min + r.Intn(899999)
 
 	return fmt.Sprintf("%d", otp)
+}
+
+func GenerateHashCode(s string) string {
+	hash := sha256.New()
+	hash.Write([]byte(s))
+	hash.Write([]byte(viper.GetString("auth.reset_pass_secret")))
+	hashedByteSlice := hash.Sum(nil)
+	hashedString := hex.EncodeToString(hashedByteSlice)
+	return hashedString
+}
+
+func GetUserInfoStr(userID, randomID string, timeStamp int64) string {
+	var b bytes.Buffer
+
+	b.WriteString(userID)
+	b.WriteString(randomID)
+	b.WriteString(strconv.FormatInt(timeStamp, 10))
+
+	return b.String()
+}
+
+func GetResetPasswordLink(userHashValue, userID, randomID string, linkExpireTimeStamp int64) string {
+	link := fmt.Sprintf("%s?code=%s&user_id=%s&timestamp=%d&token=%s", viper.GetString("auth.password_reset_link"), userHashValue, userID, linkExpireTimeStamp, randomID)
+	return link
 }
